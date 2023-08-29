@@ -1,0 +1,54 @@
+Write a function using Spark Python or Spark Scala API to calculate total earnings (sum of transactions above 0) for each user from Switzerland by year as a pivot table. The result dataframe should contain user full names as one field split by whitespace, years, and earning values.  
+ChatGPT
+To accomplish this task, you would first need to join the account.csv and transactions.csv files based on the account ID, and then filter the records for users from Switzerland. After that, you would aggregate the data to calculate the total earnings (sum of transactions above 0) for each user by year.
+
+Here's some sample code in PySpark to achieve this:
+
+python
+Copy code
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
+
+def calculate_earnings_for_swiss_users_by_year():
+    # Initialize Spark Session
+    spark = SparkSession.builder \
+        .appName("Calculate Swiss Users Earnings by Year") \
+        .getOrCreate()
+
+    # Read account.csv file
+    account_df = spark.read.csv("account.csv", header=True)
+
+    # Read transactions.csv file
+    transactions_df = spark.read.csv("transactions.csv", header=True)
+
+    # Convert amount to float and transaction_date to date type
+    transactions_df = transactions_df.withColumn("amount", F.col("amount").cast("float"))
+    transactions_df = transactions_df.withColumn("transaction_date", F.col("transaction_date").cast("date"))
+
+    # Extract year from transaction_date
+    transactions_df = transactions_df.withColumn("year", F.year("transaction_date"))
+
+    # Filter for Swiss users and join with transactions
+    swiss_users_df = account_df.filter(account_df.country == "CHE") # Assuming "CHE" stands for Switzerland
+    joined_df = transactions_df.join(swiss_users_df, transactions_df.account_id == swiss_users_df.id)
+
+    # Calculate user full name and filter for positive transactions (earnings)
+    joined_df = joined_df.withColumn("full_name", F.concat_ws(" ", "first_name", "last_name"))
+    positive_transactions_df = joined_df.filter(joined_df.amount > 0)
+
+    # Calculate total earnings for each Swiss user by year
+    pivot_df = positive_transactions_df.groupBy("full_name").pivot("year").sum("amount")
+
+    # Show the result
+    pivot_df.show()
+
+    # Stop Spark Session
+    spark.stop()
+
+# Run the function
+calculate_earnings_for_swiss_users_by_year()
+This function will read account.csv and transactions.csv, filter out users from Switzerland, and join these users with their transactions. It will then filter out only the positive transactions (earnings) and group the records by full_name and year to calculate the total earnings.
+
+Finally, the function will pivot the table by year and show the DataFrame, which will have columns like full_name, year1, year2, etc., and the values in these columns will be the total earnings for each Swiss user for those years.
+
+Note: Please make sure to place your account.csv and transactions.csv files in the correct path or modify the code to point to the correct path. Also, replace "CHE" with the correct abbreviation for Switzerland if it's different in your dataset.
