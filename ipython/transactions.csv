@@ -1,0 +1,11 @@
+account_id,amount,account_type,transaction_date
+1,200.00,savings,2023-07-01
+1,-50.00,savings,2023-07-05
+2,500.00,checking,2023-07-10
+2,-100.00,checking,2023-07-12
+3,400.00,savings,2023-07-20
+3,-30.00,savings,2023-07-21
+4,1000.00,savings,2023-07-22
+4,-200.00,savings,2023-07-25
+5,250.00,checking,2023-07-28
+5,-50.00,checking,2023-07-30
