@@ -1,0 +1,121 @@
+Write a function that expects a transactions dataset as input and returns it with an additional column "level". The value of "level " is calculated based on the "amount" column as: 
+
+Top 25% of all transactions get a value "high". 
+
+The next 50% of all transactions get "average". 
+
+The rest gets "low". 
+ChatGPT
+To calculate the "level" based on the "amount" column in the transactions dataset, you can use the percentile or approx_percentile function to find the 25th and 75th percentile values of the "amount" column. Then you can use these values to classify transactions into "high", "average", and "low" categories.
+
+Here's some sample code in PySpark to achieve this:
+
+python
+Copy code
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
+from pyspark.sql.window import Window
+
+def add_transaction_level(transactions_df):
+    # Initialize Spark Session
+    spark = SparkSession.builder \
+        .appName("Add Transaction Level") \
+        .getOrCreate()
+    
+    # Convert amount to float if it's not already
+    transactions_df = transactions_df.withColumn("amount", F.col("amount").cast("float"))
+
+    # Calculate 25th and 75th percentiles
+    quantiles = transactions_df.approxQuantile("amount", [0.25, 0.75], 0.01)
+    lower_quantile = quantiles[0]
+    upper_quantile = quantiles[1]
+    
+    # Add "level" column based on "amount"
+    transactions_with_level = transactions_df.withColumn(
+        "level",
+        F.when(F.col("amount") > upper_quantile, "high")
+        .when((F.col("amount") > lower_quantile) & (F.col("amount") <= upper_quantile), "average")
+        .otherwise("low")
+    )
+
+    # Show the result (for demonstration purposes)
+    transactions_with_level.show()
+
+    # Return the DataFrame with the additional "level" column
+    return transactions_with_level
+
+# Sample usage
+if __name__ == "__main__":
+    # Initialize Spark Session
+    spark = SparkSession.builder \
+        .appName("Sample Usage") \
+        .getOrCreate()
+
+    # Sample transactions DataFrame (replace with your actual DataFrame)
+    transactions_df = spark.createDataFrame(
+        [(1, 100.0), (2, 200.0), (3, 300.0), (4, 50.0), (5, 25.0)],
+        ["id", "amount"]
+    )
+
+    # Add "level" column
+    transactions_with_level = add_transaction_level(transactions_df)
+
+    # Stop Spark Session
+    spark.stop()
+In this code, the function add_transaction_level takes a DataFrame transactions_df as an argument. It first calculates the 25th and 75th percentile of the "amount" column using approxQuantile.
+
+The function then adds a new column "level" to the DataFrame, categorizing each transaction as either "high", "average", or "low" based on its "amount".
+
+Finally, the function returns the updated DataFrame.
+
+The sample usage at the end creates a simple transactions DataFrame with some sample data, adds the "level" column using the add_transaction_level function, and then shows the updated DataFrame. Replace the sample DataFrame with your actual transactions DataFrame when using this code.
+
+add the spark session as an parameter to the function and remove the show results in method
+ChatGPT
+Certainly, by adding the Spark session as a parameter, you can make the function more modular and reusable. Here's how you could update the function to accept the Spark session as an argument:
+
+python
+Copy code
+from pyspark.sql import functions as F
+
+def add_transaction_level(spark, transactions_df):
+    # Convert amount to float if it's not already
+    transactions_df = transactions_df.withColumn("amount", F.col("amount").cast("float"))
+
+    # Calculate 25th and 75th percentiles
+    quantiles = transactions_df.approxQuantile("amount", [0.25, 0.75], 0.01)
+    lower_quantile = quantiles[0]
+    upper_quantile = quantiles[1]
+    
+    # Add "level" column based on "amount"
+    transactions_with_level = transactions_df.withColumn(
+        "level",
+        F.when(F.col("amount") > upper_quantile, "high")
+        .when((F.col("amount") > lower_quantile) & (F.col("amount") <= upper_quantile), "average")
+        .otherwise("low")
+    )
+
+    # Return the DataFrame with the additional "level" column
+    return transactions_with_level
+
+# Sample usage
+if __name__ == "__main__":
+    from pyspark.sql import SparkSession
+
+    # Initialize Spark Session
+    spark = SparkSession.builder \
+        .appName("Sample Usage") \
+        .getOrCreate()
+
+    # Sample transactions DataFrame (replace with your actual DataFrame)
+    transactions_df = spark.createDataFrame(
+        [(1, 100.0), (2, 200.0), (3, 300.0), (4, 50.0), (5, 25.0)],
+        ["id", "amount"]
+    )
+
+    # Add "level" column
+    transactions_with_level = add_transaction_level(spark, transactions_df)
+
+    # Stop Spark Session
+    spark.stop()
+In this modified version, I've removed the .show() method to stop displaying the results, as per your request. The Spark session is passed as the first parameter to the add_transaction_level function, followed by the transactions_df DataFrame. This makes it easier to reuse the function in different contexts where a Spark session is already available.
